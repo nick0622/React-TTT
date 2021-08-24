@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset = "utf-8"/>
+        <title>井字遊戲</title>
+        <style type = "text/css">
+        .board{
+            width: 300px;height: 300px;margin: 50px auto;
+            border: 5px solid black;border-radius: 10px;
+            position: relative;
+        }
+        .cell{
+            width: 100px;height: 100px;box-sizing: border-box;
+            line-height: 100px;font-size: 50px;text-align: center;
+            border: 1px solid black;cursor: pointer;
+            display: inline-block;vertical-align: middle;
+        }
+        .line{
+            position: absolute;top: 0px;left: 0px;
+            width: 300px;height: 300px;
+        }
+        .winner{
+            font-size: 24px;text-align: center;line-height: 2em;
+        }
+        #btn{
+           border: 1px solid black;border-radius: 5px;
+           line-height: 2em;width: 100px;
+           cursor: pointer;margin-top: 20px;
+           margin-left: 100px;text-align: center;
+        }
+        </style>
+        <script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+        <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script> 
+        <script src = "https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        <script type = "text/babel">
+            class Winner extends React.Component{
+                constructor(props){
+                    super(props);
+                }
+                render(){
+                    if (this.props.winner === 1){
+                        return <div className = "winner">贏家是 O 恭喜~~</div>
+                    }else if (this.props.winner === 0){
+                        return <div className = "winner">贏家是 X 恭喜~~</div>
+                    }else if (this.props.marks.indexOf(-1) == -1){
+                        return <div className = "winner">平手des</div>
+                    }
+                    
+                    return null
+                }
+            }
+            // 玩家獲勝時，連線
+            class Line extends React.Component{
+                render(){
+                    let startX = this.props.startIndex%3;
+                    let startY = Math.floor(this.props.startIndex/3);
+                    let endX = this.props.endIndex%3;
+                    let endY = Math.floor(this.props.endIndex/3);
+                    return <svg className = "line"><line x1 = {startX*100+50} y1 = {startY*100+50} x2 = {endX*100+50} y2 = {endY*100+50} stroke = "red" strokeWidth = "5"/></svg>
+                }
+            }
+            // 框框組件
+            class Cell extends React.Component{
+                render(){
+                    let text = "";
+                    if(this.props.mark === 1){
+                        text = "O"
+                    }else if(this.props.mark === 0){
+                        text = "X"
+                    }else if(this.props.mark === -1){
+                        text = ""
+                    }
+                    return <div className = "cell" onClick = {this.click.bind(this)}>{text}</div>
+                }
+                click(){
+                    this.props.update(this.props.index);
+                }
+            }
+            // 遊戲盤組件
+            class Board extends React.Component{
+                constructor(props){
+                    super(props);
+                    this.state = {
+                        circle: 0, // 回合數
+                        marks: [-1, -1, -1, -1, -1, -1, -1, -1, -1], // 框框標記 : 0: 無/1: O/-1: X
+                        winner: null // 贏家資訊
+                    }
+                }
+                render(){
+                    let cells = [];
+                    for(let i = 0; i < 9; i++){
+                        cells.push(<Cell index = {i} mark = {this.state.marks[i]} 
+                        update = {this.updateMark.bind(this)}/>)
+                    }
+                    if(this.state.winner !== null){
+                        cells.push(<Line startIndex = {this.state.winner.startIndex}
+                        endIndex = {this.state.winner.endIndex}/>)
+                    }           
+                    return <div className = "board">{cells}
+                        <div id = "btn" onClick = {this.resetGame.bind(this)}>重新開始</div>
+                        <Winner winner = {this.state.winner?.side} marks = {this.state.marks}/>
+                        </div>
+                }
+                updateMark(index){
+                    let currentMark = this.state.marks[index];
+                    if (currentMark === -1 && this.state.winner === null){
+                        // 1. 原先 mark 為-1 
+                        // 2. 沒有贏家 
+                        this.setState((preState)=>{
+                            let mark = preState.circle % 2; // 根據回合數，決定畫圈或畫叉
+                            preState.marks[index] = mark; // 回傳圈或叉到 marks 裡
+                            let winner = this.checkWinner(preState.marks) // 偵測贏家
+                            return {
+                                circle: preState.circle+1,
+                                marks: preState.marks,
+                                winner: winner
+                            }
+                        })
+                    }
+                }
+                checkWinner(marks){
+                    // 若有贏家，回傳哪一方獲勝/開始編號/結束編號
+                    // 1. 水平方向
+                    for (let i = 0; i < 7; i += 3){
+                        if (marks[i] !== -1 && marks[i] === marks[i+1] && marks[i+1] === marks[i+2]){
+                            return {side: marks[i], startIndex: i, endIndex: i+2}
+                        }
+                    }
+                    // 2. 垂直方向
+                    for (let i = 0; i < 3; i++){
+                        if (marks[i] !== -1 && marks[i] === marks[i+3] && marks[i+3] === marks[i+6]){
+                            return {side: marks[i], startIndex: i, endIndex: i+6}
+                        }
+                    }
+                    // 斜線
+                    if (marks[0] !== -1 && marks[0] === marks[4] && marks[4] === marks[8]){
+                        return {side: marks[0], startIndex: 0, endIndex: 8}
+                    }else if (marks[2] !== -1 && marks[2] === marks[4] && marks[4] === marks[6]){
+                        return {side: marks[2], startIndex: 2, endIndex: 6}
+                    }
+                    return null;
+                }
+                resetGame(){
+                    this.setState({
+                        circle: 0, 
+                        marks: [-1, -1, -1, -1, -1, -1, -1, -1, -1], 
+                        winner: null
+                    })
+                }
+            }
+            onload = ()=>{
+                ReactDOM.render(<Board/>, document.body)
+            }
+        </script>
+    </head>
+    <body></body>
+</html>
